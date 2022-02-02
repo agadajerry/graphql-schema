@@ -159,7 +159,11 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   res.render("error");
 });
 
-export default app;
+const port:number = 3000
+app.listen(port, ()=>{
+  console.log("Server running on port 3000")
+})
+// export default app;
 
 
 
