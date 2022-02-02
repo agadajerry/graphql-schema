@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import logger from "morgan";
 import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
+import {organSchema,addEmploye,addDepartment}from "./organisationSchema"
 
 
 
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
+
 
 
 
@@ -129,15 +131,22 @@ let updateUser = (id:any, name:string, age:number)=>{
 const root = {
   user:getUsers,
   users:retriveUser,
-  updateUser:updateUser
+  updateUser:updateUser,
+  addEmployee:addEmploye,
+  departments:addDepartment
+  
  
 }
 
+//root value
+
+
 
 app.use("/graphql", graphqlHTTP({
-  schema:schema,
+  schema:organSchema,
   rootValue:root,
   graphiql:true
+ 
 }))
 
 // app.use("/", indexRouter);

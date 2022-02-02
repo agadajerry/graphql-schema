@@ -1,24 +1,6 @@
-import createError from "http-errors";
-import express, { Request, Response, NextFunction } from "express";
-import path from "path";
-import cookieParser from "cookie-parser";
-import logger from "morgan";
-import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
 
-const app = express();
-
-// view engine setup
-app.set("views", path.join(__dirname, ".././views"));
-app.set("view engine", "jade");
-
-app.use(logger("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
-
-const schema = buildSchema(`
+export const organSchema = buildSchema(`
 
 type Query{
 employee(id:Int):Employee
@@ -97,7 +79,7 @@ class NewEmployee {
   }
 }
 
-let addEmploye = ({ input }: { input: any }) => {
+export let addEmploye = ({ input }: { input: any }) => {
   const { name } = input;
 
   let id = employeeDb.length;
@@ -130,7 +112,7 @@ class NewDepartment {
   }
 }
 
-let addDepartment = ({ input }: { input: any }) => {
+export let addDepartment = ({ input }: { input: any }) => {
   const { name, noofEmployees, manager, employee_Id } = input;
 
   let newDpt = new NewDepartment(name, noofEmployees, manager, employee_Id);
@@ -142,42 +124,20 @@ let addDepartment = ({ input }: { input: any }) => {
 
 
 
-//root value
-const root = {
-  addEmployee: addEmploye,
-  employee: getEmployee,
-  departments: addDepartment,
-};
 
-app.use(
-  "/graphql",
-  graphqlHTTP({
-    schema: schema,
-    rootValue: root,
-    graphiql: true,
-  })
-);
+
+
+
+
+export default  {organSchema,addEmploye,addDepartment}
+
+
+
 
 // app.use("/", indexRouter);
 // app.use("/users", usersRouter);
 
-// catch 404 and forward to error handler
-app.use(function (req, res, next) {
-  next(createError(404));
-});
 
-// error handler
-app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  // render the error page
-  res.status(err.status || 500);
-  res.render("error");
-});
-
-module.exports = app;
 
 /**
  * query getSingleUser($userAId:Int, $userBId:Int){
