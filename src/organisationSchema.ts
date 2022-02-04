@@ -1,4 +1,6 @@
-import { buildSchema } from "graphql";
+import { buildSchema, GraphQLEnumType } from "graphql";
+import { GraphQLSchema, 
+  GraphQLObjectType,GraphQLString } from "graphql";
 
 export const organSchema = buildSchema(`
 
@@ -125,11 +127,33 @@ export let addDepartment = ({ input }: { input: any }) => {
 
 
 
+ export const schemaObj = new GraphQLSchema({
+  query : new GraphQLObjectType({
+name: 'Company',
+fields:()=>({
+message:{type:GraphQLString},
+
+email:{type:GraphQLString,
+  resolve:()=> "Hello Jerry"} ,
+
+})
+  })
+  
+
+})
 
 
 
 
-export default  {organSchema,addEmploye,addDepartment}
+
+
+
+
+
+
+
+
+export default  {organSchema,addEmploye,addDepartment, schemaObj}
 
 
 

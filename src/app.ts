@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import logger from "morgan";
 import { graphqlHTTP } from "express-graphql";
 import { buildSchema } from "graphql";
-import {organSchema,addEmploye,addDepartment}from "./organisationSchema"
+import {organSchema,addEmploye,addDepartment, schemaObj}from "./organisationSchema"
 
 
 
@@ -133,7 +133,8 @@ const root = {
   users:retriveUser,
   updateUser:updateUser,
   addEmployee:addEmploye,
-  departments:addDepartment
+  departments:addDepartment,
+  schemaObj:schemaObj
   
  
 }
