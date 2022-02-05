@@ -4,11 +4,8 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import { graphqlHTTP } from "express-graphql";
-import { buildSchema } from "graphql";
-import {organSchema,addEmploye,addDepartment}from "./organisationSchema"
-
-
-
+import { buildSchema, GraphQLBoolean, GraphQLID, GraphQLInt, GraphQLList } from "graphql";
+import { GraphQLSchema, GraphQLObjectType, GraphQLString } from "graphql";
 
 const app = express();
 
@@ -22,138 +19,155 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-
-
-
 //graphql here
 
+const assi = {
+  company: "name",
+  employees: [
+    {
+      id: 1,
+      name: "yo",
+    },
+  ],
+  departments: [
+    {
+      name: "Engineering",
+      noofEmployees: 4,
+      employee_Id: [1, 2, 3, 4],
+      manager: 1,
+    },
+  ],
+};
 
-// Sample users
-var users = [
-  {
-    id: 1,
-    name: 'Brian',
-    age: '21',
-    shark: 'Great White Shark'
+// Schema for graphqlObject
+
+//employee schema
+
+const Employee = new GraphQLObjectType({
+  name: "Employee_type",
+  fields: () => {
+    return {
+      id: { type: GraphQLInt },
+      name: { type: GraphQLString },
+    };
   },
-  {
-    id: 2,
-    name: 'Kim',
-    age: '22',
-    shark: 'Whale Shark'
+});
+
+// department schema
+const Department = new GraphQLObjectType({
+  name: "Department_type",
+  fields: () => {
+    return {
+      name: { type: GraphQLString },
+      noofEmployees: { type: GraphQLInt },
+      employee_Id: { type: new GraphQLList(GraphQLInt) },
+      manager: { type: GraphQLInt },
+    };
   },
-  {
-    id: 3,
-    name: 'Faith',
-    age: '23',
-    shark: 'Hammerhead Shark'
+});
+
+// Company name
+
+const Company = new GraphQLObjectType({
+  name: "Company_type",
+  fields: () => {
+    return {
+      Company: { type: GraphQLString },
+      employees: { type: new GraphQLList(Employee) },
+      departments: { type: new GraphQLList(Department) },
+    };
   },
-  {
-    id: 4,
-    name: 'Joseph',
-    age: '23',
-    shark: 'Tiger Shark'
-  },
-  {
-    id: 5,
-    name: 'Joy',
-    age: '25',
-    shark: 'Hammerhead Shark'
-  }
-];
+});
 
 
 
-const schema  = buildSchema(`
-type Query {
-  user(id:Int) :Person
-  users(shark :String): [Person]
-}
+// reoslver call
 
-type Mutation {
-  updateUser(id:Int!, name:String!, age:Int):Person
-}
-
-
-type Person{
-  id:Int!
-  name:String,
-  age:Int
-  shark : String
-}
-
-
-`)
-
-
-
-
-//get user
-
-const getUsers = (args:any)=>{
-
-  const userId = args.id
-
-  return users.filter((user:any)=>user.id === userId)[0];
-}
-
-
-//retrive users
-//check for shark if exist
-const retriveUser = (args:any)=>{
-
-  if(args.shark){
-    var shark = args.shark;
-
-    return users.filter((user:any)=>user.shark === shark)
-  }else{
-    return users
-  }
-}
-
-// update user
-
-let updateUser = (id:any, name:string, age:number)=>{
-
- users.map((user:any)=>{
-    if(user.id === id){
-      user.name = name;
-      user.age = age;
-      return user
+const Query = new GraphQLObjectType({
+  name: "query_type",
+  fields: {
+    Company: {
+      type: Company,
+      resolve(parents: any, args: any) {
+        return assi;
+      },
+    },
+    getSingleDepartment:{
+      type: Company,
+      args: {
+        department_name:{type:GraphQLString}
+      },
+      resolve(parents, args) {
+        
+        const {departments} = assi; // get only the department from the object by distructuring
+        const deptName = departments.find(cmp=>cmp.name === args.department_name);
+        
+        return {...args}
+      }
     }
-  });
+  },
+});
 
-  return users.filter((use:any)=>use.id === id)[0]
-}
+// Mutation for a given fields
 
+const Mutation = new GraphQLObjectType({
+
+  name:"root_mutation",
+  fields: {
+    addEmployees:{
+      type:Employee,
+      args: {
+        id:{type:GraphQLInt},
+        name:{type:GraphQLString}
+      },
+      resolve(parent:any,args:any){
+         assi.employees.push({...args})
+         return {...args}
+      }
+    },
+    addEmployee2Department:{
+      type:GraphQLBoolean,
+      args:{
+        employee_id:{type:GraphQLInt},
+        department_name:{type:GraphQLString}
+      },
+      resolve(parent,args){
+
+        const {departments} = assi
+        const index = departments.findIndex(dpt=>dpt.name === args.department_name);
+
+        const old_departmentLength = departments.length;
+
+        departments[index].employee_Id.push(args.employee_id);
+
+        const newDepartmentLength = departments[index].employee_Id.length;
+
+       return  old_departmentLength < newDepartmentLength ? true : false;
+
+      }
+    }
+
+  }
+})
+
+
+const Schema = new GraphQLSchema({
+  query: Query,
+  mutation:Mutation
+});
 
 //root value
-const root = {
-  user:getUsers,
-  users:retriveUser,
-  updateUser:updateUser,
-  addEmployee:addEmploye,
-  departments:addDepartment
-  
- 
-}
 
-//root value
-
-
-
-app.use("/graphql", graphqlHTTP({
-  schema:organSchema,
-  rootValue:root,
-  graphiql:true
- 
-}))
-
-// app.use("/", indexRouter);
-// app.use("/users", usersRouter);
+app.use(
+  "/graphql",
+  graphqlHTTP({
+    schema: Schema,
+    graphiql: true,
+  })
+);
 
 // catch 404 and forward to error handler
-app.use(function (req, res, next) {
+app.use(function (req: Request, res: Response, next: NextFunction) {
   next(createError(404));
 });
 
@@ -168,67 +182,7 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   res.render("error");
 });
 
-const port:number = 3000
-app.listen(port, ()=>{
-  console.log("Server running on port 3000")
-})
-// export default app;
-
-
-
-
-
-
-
-
-
-/**
- * query getSingleUser($userAId:Int, $userBId:Int){
-  
-  userA:user(id:$userAId){
-    ... userFields
-  },
-  
-   userB:user(id:$userBId){
-    ... userFields
-  }
-}
-
-  fragment userFields on Person{
-    name
-    age
-    shark
-  }
-  
-  
-  query getUsers($shark:String, $age: Boolean!, $id:Boolean!){
-    
-    users(shark:$shark){
-      ...userFields2
-    }
-  }
-
-  fragment userFields2 on Person{
-    name
-  age @include(if : $age)
-   id @include(if : $id)
-  }
-  
-  
-
-  # Update user
-
-mutation updateUser($id:Int!, $name:String!, $age:Int){
-  
-  updateUser(id:$id,name:$name,age:$age){
-    
-    ...userFields3
-  }
-}
-
-fragment userFields3 on Person{
-  name
-  age
-  shark
-}
- */
+const port: number = 3000;
+app.listen(port, () => {
+  console.log("Server running on port 3000");
+});
