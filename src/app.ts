@@ -4,10 +4,15 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import logger from "morgan";
 import { graphqlHTTP } from "express-graphql";
-import { buildSchema, GraphQLBoolean, GraphQLID, GraphQLInt, GraphQLList } from "graphql";
+import { buildSchema, GraphQLBoolean, GraphQLID, GraphQLInputObjectType, GraphQLInt, GraphQLList } from "graphql";
 import { GraphQLSchema, GraphQLObjectType, GraphQLString } from "graphql";
-
+import connect from "./db-config/mongo-connection"
+import {StudentSchema,StudentQuery} from "./studentDetails"
 const app = express();
+
+
+//connect to db
+connect();
 
 // view engine setup
 app.set("views", path.join(__dirname, ".././views"));
@@ -81,7 +86,8 @@ const Company = new GraphQLObjectType({
 
 
 
-// reoslver call
+
+// resolver call
 
 const Query = new GraphQLObjectType({
   name: "query_type",
@@ -98,7 +104,7 @@ const Query = new GraphQLObjectType({
         department_name:{type:GraphQLString}
       },
       resolve(parents, args) {
-        
+
         const {departments} = assi; // get only the department from the object by distructuring
         const deptName = departments.find(cmp=>cmp.name === args.department_name);
         
@@ -110,49 +116,59 @@ const Query = new GraphQLObjectType({
 
 // Mutation for a given fields
 
+// input field for args
+
+const addEmployeeIdToDpt = new GraphQLInputObjectType({
+  name:"input_field_employee",
+  fields:{
+    id:{type:GraphQLInt},
+    name:{type:GraphQLString}
+  }
+})
 const Mutation = new GraphQLObjectType({
 
   name:"root_mutation",
   fields: {
     addEmployees:{
       type:Employee,
-      args: {
-        id:{type:GraphQLInt},
-        name:{type:GraphQLString}
-      },
+      args: {input:{type:addEmployeeIdToDpt}},
       resolve(parent:any,args:any){
-         assi.employees.push({...args})
-         return {...args}
+         assi.employees.push({...args.input})
+         return {...args.input}
       }
     },
-    addEmployee2Department:{
-      type:GraphQLBoolean,
+
+    addEmployeeToDepartment:{
+      type: GraphQLBoolean,
       args:{
-        employee_id:{type:GraphQLInt},
-        department_name:{type:GraphQLString}
+        empID:{type:GraphQLInt},
+        department_name:{type:GraphQLString},
       },
-      resolve(parent,args){
+      resolve(parent:any,args:any){
+          
+        const {departments} = assi;
+        
+        
+        let indexOfDepartment =  departments.findIndex(dpt=>dpt.name === args.department_name);
+        
+        let numOfEmployees = departments[indexOfDepartment].employee_Id.length;
+        console.log(numOfEmployees);
 
-        const {departments} = assi
-        const index = departments.findIndex(dpt=>dpt.name === args.department_name);
+        // add new employee id to department
+        departments[indexOfDepartment].employee_Id.push(args.empID);
+        
+        const newNumOfEmployees = departments[indexOfDepartment].employee_Id.length
+        console.log(newNumOfEmployees);
 
-        const old_departmentLength = departments.length;
-
-        departments[index].employee_Id.push(args.employee_id);
-
-        const newDepartmentLength = departments[index].employee_Id.length;
-
-       return  old_departmentLength < newDepartmentLength ? true : false;
-
+         return numOfEmployees < newNumOfEmployees ? true : false;
       }
     }
-
   }
 })
 
 
 const Schema = new GraphQLSchema({
-  query: Query,
+  query: StudentQuery,
   mutation:Mutation
 });
 
@@ -161,7 +177,7 @@ const Schema = new GraphQLSchema({
 app.use(
   "/graphql",
   graphqlHTTP({
-    schema: Schema,
+    schema: StudentSchema,
     graphiql: true,
   })
 );
